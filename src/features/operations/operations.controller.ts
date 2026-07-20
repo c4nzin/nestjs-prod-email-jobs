@@ -1,6 +1,8 @@
 import { Controller, Get, NotFoundException, Param } from '@nestjs/common';
 import { OperationsService } from './operations.service';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Operations')
 @Controller()
 export class OperationsController {
   constructor(private readonly operations: OperationsService) {}

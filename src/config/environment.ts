@@ -13,8 +13,8 @@ export interface CommonEnvironment {
 }
 
 export interface ApiEnvironment extends CommonEnvironment {
-  API_KEY: string;
-  API_SECRET: string;
+  PORT: number;
+  PASSWORD_HASH_ROUNDS: number;
 }
 
 export interface WorkerEnvironment extends CommonEnvironment {
