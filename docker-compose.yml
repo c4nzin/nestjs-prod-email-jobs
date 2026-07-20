@@ -1,0 +1,89 @@
+services:
+  mongodb:
+    image: mongo:8
+    container_name: nest-mail-mongodb
+    restart: unless-stopped
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: >
+        mongosh --quiet --eval "try { rs.status().ok } catch (e) {
+        rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}).ok }"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: nest-mail-redis
+    restart: unless-stopped
+    command:
+      [
+        'redis-server',
+        '--appendonly',
+        'yes',
+        '--appendfsync',
+        'everysec',
+        '--maxmemory-policy',
+        'noeviction',
+      ]
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    profiles: ['production']
+    build: .
+    image: nest-mail-jobs:latest
+    command: ['node', 'dist/main.js']
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      DATABASE_URI: mongodb://mongodb:27017/backgroundjobexample?replicaSet=rs0
+      REDIS_HOST: redis
+    ports:
+      - '3000:3000'
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000/api/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    profiles: ['production']
+    image: nest-mail-jobs:latest
+    command: ['node', 'dist/worker.js']
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      DATABASE_URI: mongodb://mongodb:27017/backgroundjobexample?replicaSet=rs0
+      REDIS_HOST: redis
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
