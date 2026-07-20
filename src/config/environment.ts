@@ -1,48 +1,75 @@
-type Environment = Record<string, unknown>;
+import type { ConfigModuleOptions } from '@nestjs/config';
+import * as Joi from 'joi';
 
-const COMMON_REQUIRED = [
-  'DATABASE_URI',
-  'REDIS_HOST',
-  'REDIS_PORT',
-  'BULL_PREFIX',
-] as const;
-const SMTP_REQUIRED = [
-  'SMTP_HOST',
-  'SMTP_PORT',
-  'MAIL_FROM_NAME',
-  'MAIL_FROM_ADDRESS',
-] as const;
+export type NodeEnvironment = 'development' | 'production' | 'test';
 
-export function validateApiEnvironment(config: Environment): Environment {
-  validateRequired(config, COMMON_REQUIRED);
-  validateNumbers(config, ['PORT', 'REDIS_PORT', 'PASSWORD_HASH_ROUNDS']);
-  return config;
+export interface CommonEnvironment {
+  NODE_ENV: NodeEnvironment;
+  DATABASE_URI: string;
+  PORT: number;
+  REDIS_HOST: string;
+  REDIS_PORT: number;
+  BULL_PREFIX: string;
 }
 
-export function validateWorkerEnvironment(config: Environment): Environment {
-  validateRequired(config, [...COMMON_REQUIRED, ...SMTP_REQUIRED]);
-  validateNumbers(config, ['REDIS_PORT', 'SMTP_PORT']);
-  if (config.SMTP_USER && !config.SMTP_PASSWORD && !config.SMTP_PASS) {
-    throw new Error('SMTP_PASSWORD is required when SMTP_USER is set');
-  }
-  return config;
+export interface ApiEnvironment extends CommonEnvironment {
+  API_KEY: string;
+  API_SECRET: string;
 }
 
-function validateRequired(config: Environment, keys: readonly string[]): void {
-  const missing = keys.filter((key) => !String(config[key] ?? '').trim());
-  if (missing.length > 0) {
-    throw new Error(
-      `Missing required environment variables: ${missing.join(', ')}`,
-    );
-  }
+export interface WorkerEnvironment extends CommonEnvironment {
+  SMTP_HOST: string;
+  SMTP_PORT: number;
+  SMTP_SECURE: boolean;
+  SMTP_USER?: string;
+  SMTP_PASSWORD?: string;
+  MAIL_FROM_NAME: string;
+  MAIL_FROM_ADDRESS: string;
 }
 
-function validateNumbers(config: Environment, keys: string[]): void {
-  for (const key of keys) {
-    if (config[key] === undefined || config[key] === '') continue;
-    const value = Number(config[key]);
-    if (!Number.isInteger(value) || value <= 0) {
-      throw new Error(`${key} must be a positive integer`);
-    }
-  }
-}
+const commonEnvironmentSchema = Joi.object({
+  NODE_ENV: Joi.string().valid('development', 'production', 'test').required(),
+  DATABASE_URI: Joi.string().uri().required().trim(),
+  REDIS_HOST: Joi.string().hostname().required(),
+  REDIS_PORT: Joi.number().required(),
+  BULL_PREFIX: Joi.string().required(),
+});
+
+export const apiEnvironmentSchema = commonEnvironmentSchema.keys({
+  PORT: Joi.number().port().required().default(3000),
+  PASSWORD_HASH_ROUNDS: Joi.number().required().default(12).max(15).min(12),
+});
+
+export const workerEnvironmentSchema = commonEnvironmentSchema.keys({
+  PORT: Joi.number().port().required().default(3001),
+  SMTP_HOST: Joi.string().hostname().required(),
+  SMTP_PORT: Joi.number().port().required(),
+  SMTP_SECURE: Joi.boolean().required(),
+  SMTP_USER: Joi.string().optional(),
+  SMTP_PASSWORD: Joi.string().optional(),
+  MAIL_FROM_NAME: Joi.string().required(),
+  MAIL_FROM_ADDRESS: Joi.string().email().required(),
+});
+
+const validationOptions: Joi.ValidationOptions = {
+  abortEarly: true,
+  allowUnknown: true,
+  convert: true,
+};
+
+export const baseConfigOptions: ConfigModuleOptions = {
+  isGlobal: true,
+  cache: true,
+  expandVariables: true,
+  validationOptions: validationOptions,
+};
+
+export const apiConfigOptions: ConfigModuleOptions = {
+  ...baseConfigOptions,
+  validationSchema: apiEnvironmentSchema,
+};
+
+export const workerConfigOptions: ConfigModuleOptions = {
+  ...baseConfigOptions,
+  validationSchema: workerEnvironmentSchema,
+};

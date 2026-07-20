@@ -6,17 +6,12 @@ import { UsersModule } from './features/users/users.module';
 import { MailQueueModule } from './modules/cache/mail/mail-queue.module';
 import { OutboxModule } from './features/outbox/outbox.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { validateApiEnvironment } from './config/environment';
 import { OperationsModule } from './features/operations/operations.module';
+import { apiConfigOptions } from './config/environment';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '.env',
-      cache: true,
-      validate: validateApiEnvironment,
-    }),
+    ConfigModule.forRoot(apiConfigOptions),
     ScheduleModule.forRoot(),
     DatabaseModule,
     QueueModule,
