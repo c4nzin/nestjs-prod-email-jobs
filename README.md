@@ -79,7 +79,7 @@ sequenceDiagram
     participant S as SMTP Server
 
     C->>A: POST /api/users/register
-    A->>A: Validate + hash password
+    A->>M: Validate + hash password
     A->>M: Start transaction
     A->>M: Insert user + outbox event
     M-->>A: Commit
