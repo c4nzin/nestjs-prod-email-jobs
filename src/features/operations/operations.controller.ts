@@ -20,14 +20,14 @@ export class OperationsController {
   @Get('mail/jobs/:jobId')
   async job(@Param('jobId') jobId: string) {
     const job = await this.operations.getJob(jobId);
-    if (!job) throw new NotFoundException('Job bulunamadı.');
+    if (!job) throw new NotFoundException('Job Not Found.');
     return job;
   }
 
   @Get('mail/deliveries/:deliveryKey')
   async delivery(@Param('deliveryKey') deliveryKey: string) {
     const delivery = await this.operations.getDelivery(deliveryKey);
-    if (!delivery) throw new NotFoundException('Delivery bulunamadı.');
+    if (!delivery) throw new NotFoundException('Delivery Not Found.');
     return delivery;
   }
 }

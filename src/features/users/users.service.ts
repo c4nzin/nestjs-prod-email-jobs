@@ -23,11 +23,7 @@ export class UsersService {
       await session.withTransaction(async () => {
         const passwordHash = await bcrypt.hash(
           dto.password,
-          Number(
-            this.config.get('PASSWORD_HASH_ROUNDS') ??
-              this.config.get('BCRYPT_SALT_ROUNDS') ??
-              12,
-          ),
+          Number(this.config.get('PASSWORD_HASH_ROUNDS') ?? 12),
         );
         const [user] = await this.users.create(
           [
@@ -68,21 +64,9 @@ export class UsersService {
       });
       return result;
     } catch (error: unknown) {
-      if (isMongoDuplicateKey(error)) {
-        throw new ConflictException('Bu e-posta adresi zaten kullanılıyor.');
-      }
       throw error;
     } finally {
       await session.endSession();
     }
   }
-}
-
-function isMongoDuplicateKey(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code?: number }).code === 11000
-  );
 }

@@ -4,6 +4,7 @@ import { buildSwagger } from './swagger';
 
 import dotenv from 'dotenv';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import { MongoExceptionFilter } from './core/filters/mongo-exception.filter';
 dotenv.config();
 
 async function bootstrap() {
@@ -20,6 +21,8 @@ async function bootstrap() {
       exposeDefaultValues: true,
     }),
   );
+
+  app.useGlobalFilters(new MongoExceptionFilter());
 
   app.useGlobalPipes(
     new ValidationPipe({
