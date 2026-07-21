@@ -6,6 +6,11 @@ import {
 } from '@nestjs/common';
 import { MongoServerError } from 'mongodb';
 
+const messages: Record<string, any> = {
+  email: 'Email already in use.',
+  username: 'Username already in use.',
+};
+
 @Catch(MongoServerError)
 export class MongoExceptionFilter implements ExceptionFilter {
   public catch(error: MongoServerError, host: ArgumentsHost) {
@@ -16,7 +21,7 @@ export class MongoExceptionFilter implements ExceptionFilter {
     const field = Object.keys(error.keyPattern ?? {})[0] ?? 'resource';
 
     throw new ConflictException(
-      `A ${field} with the same value already exists.`,
+      `${messages[field] ?? `${field} already in use.`}`,
     );
   }
 }
